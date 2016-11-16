@@ -420,8 +420,6 @@ module.exports = function(userOptions) {
                     // Преобразуем строку сортировки в массив блоков
                     sortBlock = sortBlock.split(' ');
 
-                    console.log(sortBlock);
-
                     // Помещаем стили родительского блока в список
                     pushToStyleList(_stylesList, rootStyle);
 
@@ -454,8 +452,9 @@ module.exports = function(userOptions) {
 
                     } else {
 
-                        // Если перед нами объект - запускаем поиск
-                        if (_.isObject(value)) {
+                        // Если перед нами объект
+                        // и это не объект для rgtools, то запускаем поиск
+                        if (_.isObject(value) && key !== 'tools') {
 
                             findDeepKey(_stylesList, value);
 
@@ -596,10 +595,10 @@ module.exports = function(userOptions) {
             if (checkHasCustom(filePath)) {
 
                 // Устанавливаем путь, куда писать sass файл
-                pathToSassFile = rootPath + 'src/styles' + filePath.match(/\/custom\/[a-z0-9]+\/[a-z0-9]+\//)[0];
+                pathToSassFile = rootPath + 'src/styles' + filePath.match(/\/custom\/[a-z0-9_-]+\/[a-z0-9_-]+\//)[0];
 
                 // Устанавливаем путь, куда писать файл стилей
-                pathToStyleFile = rootPath + 'dest/public/styles' + filePath.match(/\/custom\/[a-z0-9]+\/[a-z0-9]+\//)[0];
+                pathToStyleFile = rootPath + 'dest/public/styles' + filePath.match(/\/custom\/[a-z0-9_-]+\/[a-z0-9_-]+\//)[0];
 
             }
 
@@ -613,6 +612,7 @@ module.exports = function(userOptions) {
 
                 // Файл создан
                 console.log('The file ' + pathToSassFile + fileName + '.sass was saved!');
+                console.log('The file ' + pathToStyleFile + fileName + '.css was saved!');
 
                 // Преобразуем sass файл в css,
                 // запуская gulp обработку
