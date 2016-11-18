@@ -438,6 +438,7 @@ module.exports = function(userOptions) {
                         if (!!block) {
 
                             // Запускаем добавление стилей каждого блока сортировки
+                            // findDeepKey(_stylesList, block.opt.contents[0]);
                             findDeepKey(_stylesList, block.opt);
 
                         }
@@ -493,7 +494,7 @@ module.exports = function(userOptions) {
                 rootStyle = stylesData.root,
 
                 // Стиль с модификатором
-                modStyle = stylesData.mod,
+                rootModStyle = stylesData.rootMod,
 
                 // Кастомный стиль
                 customStyle = stylesData.custom,
@@ -510,9 +511,9 @@ module.exports = function(userOptions) {
             }
 
             // Проверяем на модификатор
-            if (!!modStyle) {
+            if (!!rootModStyle) {
 
-                stylesList.push(modStyle.replace('.sass', ''));
+                stylesList.push(rootModStyle.replace('.sass', ''));
 
             }
 
