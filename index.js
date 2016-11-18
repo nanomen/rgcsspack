@@ -395,8 +395,12 @@ module.exports = function(userOptions) {
                         // Ссылка на блоки сортировки
                         sortBlockMap = null,
 
+                        // Название модификатора,
+                        // по которому будем подключать из sortBlocks блоки
+                        blockMod = null,
+
                         // Массив блоков для сортировки (по сути блоки, которые используются)
-                        sortBlock = null,
+                        sortBlocks = null,
 
                         // Хеш мап всех блоков
                         blockList = null,
@@ -409,23 +413,24 @@ module.exports = function(userOptions) {
                     rootStyle = rootBlock[options.stylePathKey];
                     blockList = blockParam.blocks;
                     sortBlockMap = blockParam.sortBlocks;
+                    blockMod = blockParam.mod;
 
                     // Получаем блоки для сортировки.
                     // Если есть сортировка, соответствующая модификатору,
                     // берем его.
                     // Иначе берем дефолтный
                     // Если и его нет, то увы :)
-                    sortBlock = (!!sortBlockMap[fileName]) ? sortBlockMap[fileName] : sortBlockMap['default'];
+                    sortBlocks = (!!sortBlockMap[blockMod]) ? sortBlockMap[blockMod] : sortBlockMap['default'];
 
                     // Преобразуем строку сортировки в массив блоков
-                    sortBlock = sortBlock.split(' ');
+                    sortBlocks = sortBlocks.split(' ');
 
                     // Помещаем стили родительского блока в список
                     pushToStyleList(_stylesList, rootStyle);
 
                     // Пробегаемся по используемым блокам в сортировке
                     // И запускаем добавление стилей каждого блока сортировки
-                    _.forEach(sortBlock, blockName => {
+                    _.forEach(sortBlocks, blockName => {
 
                         let block = blockList[blockName];
 
@@ -433,11 +438,12 @@ module.exports = function(userOptions) {
                         if (!!block) {
 
                             // Запускаем добавление стилей каждого блока сортировки
-                            findDeepKey(_stylesList, block.opt.contents[0]);
+                            findDeepKey(_stylesList, block.opt);
 
                         }
 
                     });
+
 
                 } else {
 
@@ -486,8 +492,14 @@ module.exports = function(userOptions) {
                 // Базовый стиль
                 rootStyle = stylesData.root,
 
+                // Стиль с модификатором
+                modStyle = stylesData.mod,
+
                 // Кастомный стиль
-                customStyle = stylesData.custom;
+                customStyle = stylesData.custom,
+
+                // Кастомный стиль с модификатором
+                customModStyle = stylesData.customMod;
 
             // Сначала проверяем Рут, чтобы каскад был правильный
             // Если есть базовый стиль, то помещаем его
@@ -497,10 +509,24 @@ module.exports = function(userOptions) {
 
             }
 
+            // Проверяем на модификатор
+            if (!!modStyle) {
+
+                stylesList.push(modStyle.replace('.sass', ''));
+
+            }
+
             // Проверяем на кастомный стиль
             if (!!customStyle) {
 
                 stylesList.push(customStyle.replace('.sass', ''));
+
+            }
+
+            // Проверяем на кастомный модификатор
+            if (!!customModStyle) {
+
+                stylesList.push(customModStyle.replace('.sass', ''));
 
             }
 
