@@ -23,7 +23,11 @@ const
     // Для работы с файлами, путями, cli
     fs = require('fs'),
     path = require('path'),
+    mkdirp = require('mkdirp'),
     minimist = require('minimist'),
+
+    // Выносим в отдельную функцию метод получения пути до файла
+    getDirName = require('path').dirname,
 
     // Инструмент для создания плагина
     es = require('event-stream'),
@@ -249,7 +253,10 @@ module.exports = function(userOptions) {
              */
 
             // Путь до sass файла
-            pathToSassFile = null,
+            // pathToSassFile = null,
+
+            // Путь до временной папки для sass файла
+            pathToTempSassFile = null,
 
             // Путь до файла стилей
             pathToStyleFile = null,
@@ -317,7 +324,7 @@ module.exports = function(userOptions) {
 
             // Сначала заполняем дефолтными стилями, которые подключаются по-умолчанию
             // Их в последствии вынесем в тег head инлайном
-            content = `@import ${stylesPath}common\n@import ${stylesPath}global/normalize\n@import ${stylesPath}global/animation\n@import ${stylesPath}global/user\n@import ${stylesPath}global/print\n@import ${stylesPath}layouts/l-page\n@import ${stylesPath}layouts/l-aside\n@import ${srcPath}blocks/main/b-content/styles/b-content\n`;
+            content = `@import ${stylesPath}common\n@import ${stylesPath}global/normalize\n@import ${stylesPath}global/user\n@import ${stylesPath}global/print\n@import ${stylesPath}layouts/l-page\n@import ${stylesPath}layouts/l-aside\n@import ${srcPath}blocks/main/b-content/styles/b-content\n@import ${srcPath}blocks/crosslayouts/b-link/styles/b-link\n`;
 
             // Перебираем массив путей,
             // и конкатинируем их в наш контент
@@ -534,6 +541,38 @@ module.exports = function(userOptions) {
         }
 
         /**
+         * Функция записи файла по пути
+         * Дело в том, что node не сохраняет файл,
+         * если папки не созданы до этого,
+         * поэтому используем модуль, который автоматически их создает,
+         * если их нет
+         *
+         * @param  {String} path футь сохраняемого файла
+         * @param  {String} contents контент для файла
+         * @param  {Function} callback обратный вызов, после создания файла
+         * @return {Undefined} ничего не возвращает
+         *
+         */
+        function writeFile(path, contents, callback) {
+
+            // Используя модуль, создаем папки,
+            // если они не были созданы ранее
+            // Получаем названия всех папок которые нужно создать,
+            // функция getDirName объявлена выше
+            mkdirp(getDirName(path), function(err) {
+
+                if (err) {
+                    return console.log(err);
+                }
+
+                // Как папки создали - записываем файл
+                fs.writeFile(path, contents, callback);
+
+            });
+
+        }
+
+        /**
          *
          * ОБработка потока
          *
@@ -612,7 +651,11 @@ module.exports = function(userOptions) {
              */
 
             // Устанавливаем путь, куда писать sass файл
-            pathToSassFile = rootPath + 'src/styles/';
+            // pathToSassFile = rootPath + 'src/styles/';
+
+            // Устанавливаем путь временной папки,
+            // куда писать sass файл
+            pathToTempSassFile = rootPath + 'temp/styles/';
 
             // Устанавливаем путь, куда писать файл стилей
             pathToStyleFile = rootPath + 'dest/public/styles/';
@@ -622,7 +665,10 @@ module.exports = function(userOptions) {
             if (checkHasCustom(filePath)) {
 
                 // Устанавливаем путь, куда писать sass файл
-                pathToSassFile = rootPath + 'src/styles' + filePath.match(/\/custom\/[a-z0-9_-]+\/[a-z0-9_-]+\//)[0];
+                // pathToSassFile = rootPath + 'src/styles' + filePath.match(/\/custom\/[a-z0-9_-]+\/[a-z0-9_-]+\//)[0];
+
+                // Устанавливаем путь, куда писать временный sass файл
+                pathToTempSassFile = rootPath + 'temp/styles' + filePath.match(/\/custom\/[a-z0-9_-]+\/[a-z0-9_-]+\//)[0];
 
                 // Устанавливаем путь, куда писать файл стилей
                 pathToStyleFile = rootPath + 'dest/public/styles' + filePath.match(/\/custom\/[a-z0-9_-]+\/[a-z0-9_-]+\//)[0];
@@ -631,27 +677,75 @@ module.exports = function(userOptions) {
 
             // Записываем файл в дирректорию
             // Либо в базовые стили, либо в кастомные
-            fs.writeFile(pathToSassFile + fileName + '.sass', sassBuffer, function(err) {
+            // fs.writeFile(pathToSassFile + fileName + '.sass', sassBuffer, function(err) {
+
+            //     if (err) {
+            //         return console.log(err);
+            //     }
+
+            //     // Файл создан
+            //     console.log('The file ' + pathToSassFile + fileName + '.sass was saved!');
+            //     console.log('The file ' + pathToStyleFile + fileName + '.css was saved!');
+
+            //     // Преобразуем sass файл в css,
+            //     // запуская gulp обработку
+            //     // Сохраняем в dest дирректорию
+            //     gulp
+            //         .src(pathToSassFile + fileName + '.sass')
+            //         .pipe(sass({
+            //             "outputStyle": "compressed"
+            //         }))
+            //         .pipe(gulp.dest(pathToStyleFile));
+
+            // });
+
+            // Записываем файл во временную папку
+            // temp folder
+            writeFile(pathToTempSassFile + fileName + '.sass', sassBuffer, function(err) {
 
                 if (err) {
                     return console.log(err);
                 }
 
                 // Файл создан
-                console.log('The file ' + pathToSassFile + fileName + '.sass was saved!');
+                console.log('The file ' + pathToTempSassFile + fileName + '.sass was saved!');
                 console.log('The file ' + pathToStyleFile + fileName + '.css was saved!');
 
                 // Преобразуем sass файл в css,
                 // запуская gulp обработку
                 // Сохраняем в dest дирректорию
                 gulp
-                    .src(pathToSassFile + fileName + '.sass')
+                    .src(pathToTempSassFile + fileName + '.sass')
                     .pipe(sass({
                         "outputStyle": "compressed"
                     }))
                     .pipe(gulp.dest(pathToStyleFile));
 
             });
+
+            // Записываем файл во временную папку
+            // temp folder
+            // fs.writeFile(pathToTempSassFile + fileName + '.sass', sassBuffer, function(err) {
+
+            //     if (err) {
+            //         return console.log(err);
+            //     }
+
+            //     // Файл создан
+            //     console.log('The file ' + pathToTempSassFile + fileName + '.sass was saved!');
+            //     // console.log('The file ' + pathToStyleFile + fileName + '.css was saved!');
+
+            //     // Преобразуем sass файл в css,
+            //     // запуская gulp обработку
+            //     // Сохраняем в dest дирректорию
+            //     gulp
+            //         .src(pathToTempSassFile + fileName + '.sass')
+            //         .pipe(sass({
+            //             "outputStyle": "compressed"
+            //         }))
+            //         .pipe(gulp.dest(pathToStyleFile));
+
+            // });
 
             /*
              *
