@@ -258,6 +258,10 @@ module.exports = function(userOptions) {
             // Путь до временной папки для sass файла
             pathToTempSassFile = null,
 
+            // Папка, куда будут записыватся стили,
+            // в зависимости от окружения
+            envDir = null,
+
             // Путь до файла стилей
             pathToStyleFile = null,
 
@@ -639,6 +643,9 @@ module.exports = function(userOptions) {
             // удаляя повторяущиеся пути
             stylesList = _.uniq(stylesList);
 
+            // _(stylesList).reverse().value()
+            // console.log(stylesList);
+
             // Получаем контент для sass файла
             // передавая в функцию массив со списком стилей
             sassBuffer = createSassBuffer(stylesList);
@@ -653,12 +660,16 @@ module.exports = function(userOptions) {
             // Устанавливаем путь, куда писать sass файл
             // pathToSassFile = rootPath + 'src/styles/';
 
+            // Устанавливаем папку, куда писать стили
+            // в зависимости от окружения
+            envDir = (global.env === 'dev') ? 'dest' : 'prod';
+
             // Устанавливаем путь временной папки,
             // куда писать sass файл
-            pathToTempSassFile = rootPath + 'temp/styles/';
+            pathToTempSassFile = `${rootPath}temp/styles/`;
 
             // Устанавливаем путь, куда писать файл стилей
-            pathToStyleFile = rootPath + 'dest/public/styles/';
+            pathToStyleFile = `${rootPath}${envDir}/public/styles/`;
 
             // Если это кастомные файлы,
             // то изменяем пути
@@ -668,10 +679,10 @@ module.exports = function(userOptions) {
                 // pathToSassFile = rootPath + 'src/styles' + filePath.match(/\/custom\/[a-z0-9_-]+\/[a-z0-9_-]+\//)[0];
 
                 // Устанавливаем путь, куда писать временный sass файл
-                pathToTempSassFile = rootPath + 'temp/styles' + filePath.match(/\/custom\/[a-z0-9_-]+\/[a-z0-9_-]+\//)[0];
+                pathToTempSassFile = `${rootPath}temp/styles${filePath.match(/\/custom\/[a-z0-9_-]+\/[a-z0-9_-]+\//)[0]}`;
 
                 // Устанавливаем путь, куда писать файл стилей
-                pathToStyleFile = rootPath + 'dest/public/styles' + filePath.match(/\/custom\/[a-z0-9_-]+\/[a-z0-9_-]+\//)[0];
+                pathToStyleFile = `${rootPath}${envDir}/public/styles${filePath.match(/\/custom\/[a-z0-9_-]+\/[a-z0-9_-]+\//)[0]}`;
 
             }
 
@@ -708,8 +719,8 @@ module.exports = function(userOptions) {
                 }
 
                 // Файл создан
-                console.log('The file ' + pathToTempSassFile + fileName + '.sass was saved!');
-                console.log('The file ' + pathToStyleFile + fileName + '.css was saved!');
+                // console.log('The file ' + pathToTempSassFile + fileName + '.sass was saved!');
+                // console.log('The file ' + pathToStyleFile + fileName + '.css was saved!');
 
                 // Преобразуем sass файл в css,
                 // запуская gulp обработку
