@@ -180,8 +180,6 @@ var findCrossData = function(dirPath) {
  * Модуль плагина
  * Получает кастомные опции
  *
- * @stylePathKey {String} Название ключа со стилями у блока
- *
  */
 
 module.exports = function(userOptions) {
@@ -197,7 +195,61 @@ module.exports = function(userOptions) {
 
         // Стандартые опции
         options = {
-            stylePathKey: 'stylesPath'
+
+            // Название ключа со стилями у блока
+            stylePathKey: 'stylesPath',
+
+            // Стили, подключаемые во все шаблоны
+            // автоматически
+            coreStyles: {
+
+                // Основные переменные
+                common: 'common',
+
+                // Глобальные стили
+                global: {
+
+                    // Нормализация
+                    normalize: 'global/normalize',
+
+                    // Инструменты
+                    instruments: 'global/instruments',
+
+                    // Глобальные стили элементов
+                    elements: 'global/elements',
+
+                    // Модификаторы для блоков и элементов
+                    modify: 'global/modify'
+
+                },
+
+                // Стили разметки
+                layout: {
+
+                    // Основная страница
+                    page: 'layouts/l-page',
+
+                    // Боковой блок
+                    aside: 'layouts/l-aside'
+
+                },
+
+                // Кастомизация вендоров
+                vendors: {
+
+                    // Colorbox
+                    colorbox: 'vendors/vendor.colorbox.custom',
+
+                    // Scrollbar
+                    scrollbar: 'vendors/vendor.scrollbar.custom',
+
+                    // Fotorama
+                    fotorama: 'vendors/vendor.fotorama.custom'
+
+                }
+
+            }
+
         };
 
 
@@ -265,11 +317,17 @@ module.exports = function(userOptions) {
             // Путь до файла стилей
             pathToStyleFile = null,
 
-            // Массив путей до стилей блоков
-            stylesList = [],
+            // Карта стилей для инлайновых и общих
+            stylesMap = {
+                inline: [],
+                tofile: []
+            },
 
             // Будущий контент для файла стилей
-            sassBuffer = null;
+            sassBufferToFile = null,
+
+            // Будущий контент для инлайн стилей
+            sassBufferToInline = null;
 
         /**
          *
@@ -306,16 +364,50 @@ module.exports = function(userOptions) {
         }
 
         /**
+         * Нормализуем стили, которые идут в inline
+         * и которые идут в файл
+         *
+         * Логика:
+         *     Приоритетные стили в inline блоке,
+         *     проверяем, если стили, которые есть в файле
+         *     встречаются в inline блоке, то удаляем их из блока файлов
+         *
+         */
+        function normalizeStyleMap() {
+
+            // Создаем копию списка стилей для файла
+            let stylesToFileList = stylesMap.tofile.slice(0),
+                resStylesToFileList = null;
+
+            // Проходлим циклом по стилям,
+            // которые есть в inline и удаляем такие в блоке для файлов
+            stylesMap.inline.forEach(styleInline => {
+
+                // Если пути до стиля совпадают, то удаляем
+                _.remove(stylesToFileList, function(styleToFile) {
+                    return styleInline === styleToFile;
+                });
+
+            });
+
+            // Сохраняем отфильтрованный список
+            stylesMap.tofile = stylesToFileList;
+
+        }
+
+        /**
          * Собираем результирующий sass файл из всех стилей блоков,
          * которые фигурируют в обрабатываемом шаблоне
          *
-         * @param  {Array} stylesList получаем массив путей до стилей каждого блока
+         * @param  {String} stylesType тип обработки каких стилей
          * @return {String} возвращаем контент для создаваемого sass файла
          *
          */
-        function createSassBuffer(stylesList) {
+        function createSassBuffer(stylesType) {
 
             let
+
+                stylesList = stylesMap[stylesType],
 
                 // Путь до папки со стилями
                 stylesPath = rootPath + 'src/styles/',
@@ -323,12 +415,68 @@ module.exports = function(userOptions) {
                 // Путь до папки исходников проекта
                 srcPath = rootPath + 'src/',
 
-                // Будущий контент файла
-                content = null;
+                // Короткая запись до путей блоков
+                coreStyles = options.coreStyles,
 
-            // Сначала заполняем дефолтными стилями, которые подключаются по-умолчанию
-            // Их в последствии вынесем в тег head инлайном
-            content = `@import ${stylesPath}common\n@import ${stylesPath}global/normalize\n@import ${stylesPath}global/user\n@import ${stylesPath}global/print\n@import ${stylesPath}layouts/l-page\n@import ${stylesPath}layouts/l-aside\n@import ${srcPath}blocks/main/b-content/styles/b-content\n@import ${srcPath}blocks/crosslayouts/b-link/styles/b-link\n`;
+                // Будущий контент файла
+                content = '';
+
+            // Фильтруем, оставляя уникальные стили
+            stylesList = _.uniq(stylesList);
+
+            // Подключаем common sass файл
+            content += `@import ${stylesPath}${coreStyles.common}\n`;
+
+            // Если мы в инлайне
+            if (stylesType === 'inline') {
+
+                // Сначала заполняем дефолтными стилями, которые подключаются по-умолчанию
+                // Их в последствии вынесем в тег head инлайном
+                Object.keys(coreStyles).forEach(styleKey => {
+
+                    // Если это не вендоры (они должны быть в конце всех)
+                    // и не общие переменные, то
+                    // собираем стили
+                    if (styleKey !== 'vendors' && styleKey !== 'common') {
+
+                        // Если это объект,
+                        // то подключаем и его стили
+                        if (_.isObject(coreStyles[styleKey])) {
+
+                            Object.keys(coreStyles[styleKey]).forEach(style => {
+
+                                let path = (styleKey !== 'blocks') ? stylesPath : srcPath,
+                                    value = coreStyles[styleKey][style];
+
+                                // Если есть значение
+                                if (!!value) {
+
+                                    content += `@import ${path}${value}\n`;
+
+                                }
+
+                            });
+
+                        } else {
+
+                            let value = coreStyles[styleKey];
+
+                            // Если есть значение
+                            if (!!value) {
+
+                                // Если только стиль
+                                // подключаем его
+                                content += `@import ${stylesPath}${value}\n`;
+
+                            }
+
+                        }
+
+                    }
+
+                });
+
+            }
 
             // Перебираем массив путей,
             // и конкатинируем их в наш контент
@@ -336,12 +484,66 @@ module.exports = function(userOptions) {
                 content += `@import ${stylePath}\n`;
             });
 
-            // Стили кастомизации вендорных библиотек,
-            // подключаются после всех стилей
-            // Возможно от них можно как-то избавиться
-            content += `@import ${stylesPath}vendors/vendor.colorbox.custom\n@import ${stylesPath}vendors/vendor.scrollbar.custom\n@import ${stylesPath}vendors/vendor.fotorama.custom`;
+            // Если мы не в инлайне
+            if (stylesType !== 'inline') {
+
+                // Стили кастомизации вендорных библиотек,
+                // подключаются после всех стилей
+                // Возможно от них можно как-то избавиться
+                Object.keys(coreStyles.vendors).forEach(styleKey => {
+
+                    let value = coreStyles.vendors[styleKey];
+
+                    // Если есть значение
+                    if (!!value) {
+
+                        // Если только стиль
+                        // подключаем его
+                        content += `@import ${stylesPath}${value}\n`;
+
+                    }
+
+                });
+
+            }
 
             return content;
+
+        }
+
+        // Передаем в данные контент sass файла
+        // чтобы можно было инлайном его обрабатывать дальше
+        // в gulp потоке
+        function createInlineStyles(sassBuffer) {
+
+            var
+
+                // Данные, которые идут в gulp файле для сборки
+                contentObj = eval(String(fileContents)).toMerge,
+
+                // Sass компилятор
+                sassCompiler = require('/www/app/node_modules/gulp-sass/node_modules/node-sass'),
+
+                // Результат компиляции
+                compilerResult = null;
+
+                // console.log(sassBuffer);
+
+            // Компилируем стили
+            compilerResult = sassCompiler.renderSync({
+                data: sassBuffer,
+                indentedSyntax: true,
+                outputStyle: 'compressed'
+            });
+
+            // Получаем скомпилированные стили
+            contentObj.styleData = String(compilerResult.css);
+
+            // Получаем контент для файла, с добавленными стилями
+            fileContents = new Buffer(JSON.stringify(contentObj));
+
+            // добавляем контент в файл
+            file.contents = fileContents;
 
         }
 
@@ -350,12 +552,11 @@ module.exports = function(userOptions) {
          * Функция поиска стилей в блоках
          * Блоки ищем в объекте, который получаем
          *
-         * @param  {Array} _stylesList массив, в который будем сохранять найденные стили
          * @param  {Object} obj объект с данными, в которых будем искать стили
          * @return {Undefined} ничего не возвращаем
          *
          */
-        function findDeepKey(_stylesList, obj) {
+        function findDeepKey(obj) {
 
             // Проходим по объекту в поисках стилей
             // используем рекурсию
@@ -437,7 +638,7 @@ module.exports = function(userOptions) {
                     sortBlocks = sortBlocks.split(' ');
 
                     // Помещаем стили родительского блока в список
-                    pushToStyleList(_stylesList, rootStyle);
+                    pushToStyleList(rootStyle);
 
                     // Пробегаемся по используемым блокам в сортировке
                     // И запускаем добавление стилей каждого блока сортировки
@@ -450,7 +651,7 @@ module.exports = function(userOptions) {
 
                             // Запускаем добавление стилей каждого блока сортировки
                             // findDeepKey(_stylesList, block.opt.contents[0]);
-                            findDeepKey(_stylesList, block.opt);
+                            findDeepKey(block.opt);
 
                         }
 
@@ -466,7 +667,7 @@ module.exports = function(userOptions) {
                     if (key === options.stylePathKey && !!value) {
 
                         // Помещаем стили в список
-                        pushToStyleList(_stylesList, value);
+                        pushToStyleList(value);
 
                     } else {
 
@@ -474,7 +675,7 @@ module.exports = function(userOptions) {
                         // и это не объект для rgtools, то запускаем поиск
                         if (_.isObject(value) && key !== 'tools') {
 
-                            findDeepKey(_stylesList, value);
+                            findDeepKey(value);
 
                         }
 
@@ -497,48 +698,87 @@ module.exports = function(userOptions) {
          * @return {Array} styles массив с найденными стилями
          *
          */
-        function pushToStyleList(stylesList, stylesData) {
+        function pushToStyleList(stylesData) {
 
             var
 
+                // Куда будем добавлять стили
+                stylesTarget = null,
+
                 // Базовый стиль
-                rootStyle = stylesData.root,
+                rootStyle = null,
 
                 // Стиль с модификатором
-                rootModStyle = stylesData.rootMod,
+                rootModStyle = null,
 
                 // Кастомный стиль
-                customStyle = stylesData.custom,
+                customStyle = null,
 
                 // Кастомный стиль с модификатором
-                customModStyle = stylesData.customMod;
+                customModStyle = null,
 
-            // Сначала проверяем Рут, чтобы каскад был правильный
-            // Если есть базовый стиль, то помещаем его
-            if (!!rootStyle) {
+                styleInline = false;
 
-                stylesList.push(rootStyle.replace('.sass', ''));
+            // Если есть стили
+            if (!!stylesData.paths) {
 
-            }
+                // Проверяем, надо ли эти стили вставлять инлайном
+                styleInline = stylesData.inline;
 
-            // Проверяем на модификатор
-            if (!!rootModStyle) {
+                // Определяем контейнер для хранения стилей
+                // в зависимости от styleInline
+                if (styleInline) {
 
-                stylesList.push(rootModStyle.replace('.sass', ''));
+                    // В массив инлайновых стилей
+                    stylesTarget = stylesMap.inline;
 
-            }
+                } else {
 
-            // Проверяем на кастомный стиль
-            if (!!customStyle) {
+                    // В массив общих стилей
+                    stylesTarget = stylesMap.tofile;
 
-                stylesList.push(customStyle.replace('.sass', ''));
+                }
 
-            }
+                // Базовый стиль
+                rootStyle = stylesData.paths.root;
 
-            // Проверяем на кастомный модификатор
-            if (!!customModStyle) {
+                // Стиль с модификатором
+                rootModStyle = stylesData.paths.rootMod;
 
-                stylesList.push(customModStyle.replace('.sass', ''));
+                // Кастомный стиль
+                customStyle = stylesData.paths.custom;
+
+                // Кастомный стиль с модификатором
+                customModStyle = stylesData.paths.customMod;
+
+                // Сначала проверяем Рут, чтобы каскад был правильный
+                // Если есть базовый стиль, то помещаем его
+                if (!!rootStyle) {
+
+                    stylesTarget.push(rootStyle.replace('.sass', ''));
+
+                }
+
+                // Проверяем на модификатор
+                if (!!rootModStyle) {
+
+                    stylesTarget.push(rootModStyle.replace('.sass', ''));
+
+                }
+
+                // Проверяем на кастомный стиль
+                if (!!customStyle) {
+
+                    stylesTarget.push(customStyle.replace('.sass', ''));
+
+                }
+
+                // Проверяем на кастомный модификатор
+                if (!!customModStyle) {
+
+                    stylesTarget.push(customModStyle.replace('.sass', ''));
+
+                }
 
             }
 
@@ -637,19 +877,30 @@ module.exports = function(userOptions) {
 
             // Ищем стили у блоков
             // и заполняем ими массив стилей
-            findDeepKey(stylesList, dataFile);
+            findDeepKey(dataFile);
 
             // Фильтруем массив стилей,
             // удаляя повторяущиеся пути
-            stylesList = _.uniq(stylesList);
+            // stylesList = _.uniq(stylesList);
 
-            // _(stylesList).reverse().value()
-            // console.log(stylesList);
+            // Сортируем стили и удаляем дубли,
+            // что идут в инлайн и в файл
+            normalizeStyleMap();
 
             // Получаем контент для sass файла
             // передавая в функцию массив со списком стилей
-            sassBuffer = createSassBuffer(stylesList);
+            sassBufferToFile = createSassBuffer('tofile');
 
+            // Получаем контент sass файла для инлайн стилей
+            // передавая в функцию массив со списком стилей
+            sassBufferToInline = createSassBuffer('inline');
+
+            // console.log(sassBufferToFile);
+            // console.log(sassBufferToInline);
+
+            // Создаем стили из sass файла
+            // и добавляем их в данные файла
+            createInlineStyles(sassBufferToInline);
 
             /*
              *
@@ -688,7 +939,7 @@ module.exports = function(userOptions) {
 
             // Записываем файл в дирректорию
             // Либо в базовые стили, либо в кастомные
-            // fs.writeFile(pathToSassFile + fileName + '.sass', sassBuffer, function(err) {
+            // fs.writeFile(pathToSassFile + fileName + '.sass', sassBufferToFile, function(err) {
 
             //     if (err) {
             //         return console.log(err);
@@ -712,7 +963,7 @@ module.exports = function(userOptions) {
 
             // Записываем файл во временную папку
             // temp folder
-            writeFile(pathToTempSassFile + fileName + '.sass', sassBuffer, function(err) {
+            writeFile(pathToTempSassFile + fileName + '.sass', sassBufferToFile, function(err) {
 
                 if (err) {
                     return console.log(err);
@@ -736,7 +987,7 @@ module.exports = function(userOptions) {
 
             // Записываем файл во временную папку
             // temp folder
-            // fs.writeFile(pathToTempSassFile + fileName + '.sass', sassBuffer, function(err) {
+            // fs.writeFile(pathToTempSassFile + fileName + '.sass', sassBufferToFile, function(err) {
 
             //     if (err) {
             //         return console.log(err);
