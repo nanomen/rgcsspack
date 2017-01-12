@@ -237,6 +237,9 @@ module.exports = function(userOptions) {
                 // Кастомизация вендоров
                 vendors: {
 
+                    // Версия для печати
+                    print: 'global/print',
+
                     // Colorbox
                     colorbox: 'vendors/vendor.colorbox.custom',
 
