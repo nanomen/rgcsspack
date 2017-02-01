@@ -427,6 +427,9 @@ module.exports = function(userOptions) {
             // Фильтруем, оставляя уникальные стили
             stylesList = _.uniq(stylesList);
 
+            // Передаем переменную окружения
+            content += `$env: ${global.env}\n`;
+
             // Подключаем common sass файл
             content += `@import ${stylesPath}${coreStyles.common}\n`;
 
