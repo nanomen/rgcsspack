@@ -74,7 +74,7 @@ var findCrossData = function(dirPath) {
         targetFile = null,
 
         // Маска пути до файла с общими данными
-        crossData = '/includes/page.js';
+        crossData = '/crosspages/page.js';
 
     /**
      * Функции помощники
