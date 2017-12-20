@@ -528,8 +528,8 @@ module.exports = function(userOptions) {
                 contentObj = eval(String(fileContents)).toMerge,
 
                 // Sass компилятор
-                // sassCompiler = require('/www/app/node_modules/gulp-sass/node_modules/node-sass'),
-                sassCompiler = require('node-sass'),
+                sassCompiler = require('/www/app/node_modules/gulp-sass/node_modules/node-sass'),
+                // sassCompiler = require('node-sass'),
 
                 // Результат компиляции
                 compilerResult = null;
