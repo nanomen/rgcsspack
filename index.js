@@ -74,7 +74,7 @@ var findCrossData = function(dirPath) {
         targetFile = null,
 
         // Маска пути до файла с общими данными
-        crossData = '/crosspages/page.js';
+        crossData = '/includes/page.js';
 
     /**
      * Функции помощники
@@ -207,49 +207,13 @@ module.exports = function(userOptions) {
                 common: 'common',
 
                 // Глобальные стили
-                global: {
-
-                    // Нормализация
-                    normalize: 'global/normalize',
-
-                    // Инструменты
-                    instruments: 'global/instruments',
-
-                    // Глобальные стили элементов
-                    elements: 'global/elements',
-
-                    // Модификаторы для блоков и элементов
-                    modify: 'global/modify'
-
-                },
+                global: {},
 
                 // Стили разметки
-                layout: {
-
-                    // Основная страница
-                    page: 'layouts/l-page',
-
-                    // Боковой блок
-                    aside: 'layouts/l-aside'
-
-                },
+                layout: {},
 
                 // Кастомизация вендоров
-                vendors: {
-
-                    // Версия для печати
-                    print: 'global/print',
-
-                    // Colorbox
-                    colorbox: 'vendors/vendor.colorbox.custom',
-
-                    // Scrollbar
-                    scrollbar: 'vendors/vendor.scrollbar.custom',
-
-                    // Fotorama
-                    fotorama: 'vendors/vendor.fotorama.custom'
-
-                }
+                vendors: {}
 
             }
 
